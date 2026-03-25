@@ -4,8 +4,8 @@ from pydantic import BaseModel
 from sqlalchemy import Column, Integer, String, ForeignKey, Boolean
 from sqlalchemy.orm import  relationship
 
-db_config = DatabaseConfig()
-Base = db_config.base
+from database.db import Base
+
 
 class AutomacaoCreate(BaseModel):
     palavra_chave: str

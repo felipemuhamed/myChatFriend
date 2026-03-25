@@ -7,14 +7,23 @@ from service.automacao_service import AutomacaoService
 from worker import processar_evento_meta 
 from sqlalchemy.orm import  Session
 
-
-
 VERIFY_TOKEN = "minha_senha_super_secreta_saas_123" 
 app = FastAPI(title="SaaS Bot Automação - Orientado a Objetos")
 db_config = DatabaseConfig()
 
+@app.on_event("startup")
+async def startup_event():
+    print("⏳ Iniciando o SaaS...")
+    print("Tabelas registradas:", db_config.base.metadata.tables.keys())
+    db_config.base.metadata.create_all(bind=db_config.engine)
+    print("✅ Banco de dados pronto!")
+
+@app.on_event("shutdown")
+async def shutdown_event():
+    print("🛑 Desligando o SaaS... Fechando conexões.")
+
 @app.post("/api/meta/token")
-def endpoint_salvar_token(
+async def endpoint_salvar_token(
     dados: MetaTokenUpdateSchema, 
     user_id: str = Depends(AuthHandler.get_usuario_logado),
     db: Session = Depends(db_config.get_db)
@@ -24,7 +33,7 @@ def endpoint_salvar_token(
     return {"status": "sucesso", "msg": "Token da Meta atualizado com sucesso"}
 
 @app.post("/api/automacoes")
-def endpoint_criar_automacao(
+async def endpoint_criar_automacao(
     dados: AutomacaoCreateSchema, 
     user_id: str = Depends(AuthHandler.get_usuario_logado),
     db: Session = Depends(db_config.get_db)
@@ -34,7 +43,7 @@ def endpoint_criar_automacao(
     return {"status": "sucesso", "msg": "Automação criada!", "id_automacao": automacao.id}
 
 @app.get("/api/automacoes")
-def endpoint_listar_automacoes(
+async def endpoint_listar_automacoes(
     user_id: str = Depends(AuthHandler.get_usuario_logado),
     db: Session = Depends(db_config.get_db)
 ):
