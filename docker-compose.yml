@@ -1,0 +1,79 @@
+version: "3.8"
+
+services:
+  # 1. O COFRE: Banco de Dados PostgreSQL
+  db:
+    image: postgres:15-alpine
+    container_name: saas_postgres
+    environment:
+      POSTGRES_USER: saas_user
+      POSTGRES_PASSWORD: senha_super_secreta_123
+      POSTGRES_DB: saas_automacao
+    ports:
+      - "5432:5432"
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+    restart: always
+
+  # 2. A SALA DE ESPERA: RabbitMQ
+  rabbitmq:
+    image: rabbitmq:3-management-alpine
+    container_name: saas_rabbitmq
+    environment:
+      RABBITMQ_DEFAULT_USER: admin
+      RABBITMQ_DEFAULT_PASS: admin123
+    ports:
+      - "5672:5672" # Porta de comunicação interna da fila
+      - "15672:15672" # Painel visual no navegador (muito útil pra ver as mensagens chegando!)
+    restart: always
+
+  # 3. O RECEPCIONISTA: Nossa API FastAPI
+  api:
+    build: .
+    container_name: saas_fastapi
+    command: uvicorn main:app --host 0.0.0.0 --port 8000 --reload
+    volumes:
+      - .:/app
+    ports:
+      - "8000:8000"
+    environment:
+      - DATABASE_URL=postgresql://saas_user:senha_super_secreta_123@db:5432/saas_automacao
+      - CELERY_BROKER_URL=amqp://admin:admin123@rabbitmq:5672//
+    depends_on:
+      - db
+      - rabbitmq
+    restart: always
+
+  # 4. OS TRABALHADORES: Celery Workers
+  worker:
+    build: .
+    container_name: saas_celery_worker
+    # Como você tem 72 cores, coloquei concurrency=20 para ele processar 20 mensagens ao mesmo tempo logo de cara!
+    command: celery -A worker.celery_app worker --loglevel=info --concurrency=20
+    volumes:
+      - .:/app
+    environment:
+      - DATABASE_URL=postgresql://saas_user:senha_super_secreta_123@db:5432/saas_automacao
+      - CELERY_BROKER_URL=amqp://admin:admin123@rabbitmq:5672//
+    depends_on:
+      - db
+      - rabbitmq
+    restart: always
+
+  # 5. O SEGURANÇA: Keycloak
+  keycloak:
+    image: quay.io/keycloak/keycloak:24.0.0
+    container_name: saas_keycloak
+    command: start-dev # Modo dev para facilitar o setup inicial
+    environment:
+      KEYCLOAK_ADMIN: admin
+      KEYCLOAK_ADMIN_PASSWORD: admin
+    ports:
+      - "8080:8080"
+    depends_on:
+      - db
+    restart: always
+
+# Isso garante que se o container reiniciar, os dados do banco não somem
+volumes:
+  postgres_data:
