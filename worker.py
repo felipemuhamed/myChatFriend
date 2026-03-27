@@ -10,7 +10,7 @@ from models import ContaMetaEntity, AutomacaoEntity
 BROKER_URL = os.environ.get("CELERY_BROKER_URL", "amqp://admin:admin123@rabbitmq:5672//")
 celery_app = Celery("saas_worker", broker=BROKER_URL)
 
-API_VERSION = 'v19.0' 
+API_VERSION = 'v25.0' 
 db_config = DatabaseConfig()
 
 # ==========================================
@@ -142,7 +142,7 @@ def enviar_dm(recipient_id, ig_account_id, mensagem, access_token):
 
 # 2. Nova função para enviar DM baseada em um Comentário
 def enviar_dm_por_comentario(comment_id, ig_account_id, mensagem, access_token):
-    url = f"https://graph.facebook.com/{API_VERSION}/{ig_account_id}/messages"
+    url = f"https://graph.instagram.com/{API_VERSION}/{ig_account_id}/messages"
     headers = {
         "Authorization": f"Bearer {access_token}",
         "Content-Type": "application/json"
